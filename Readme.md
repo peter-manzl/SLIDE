@@ -53,4 +53,4 @@ In this directory the parameters from the neural networks are saved as *.pth fil
 Here training and validation loss (MSE) is saved for plotting. 
 
 ## Licence 
-See `Licence.txt`.
+See [Licence.txt](Licence.txt).
