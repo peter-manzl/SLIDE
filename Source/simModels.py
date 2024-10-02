@@ -1,12 +1,11 @@
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# This is an EXUDYN example
 #
 # Details:  Library for creating multibody simulation models for the SLIDE method. 
 #
 # Author:   Peter Manzl, Johannes Gerstmayr
 # Date:     2024-09-28
 #
-# Copyright:This file is part of Exudyn. Exudyn is free software. You can redistribute it and/or modify it under the terms of the Exudyn license. 
+# Copyright: See Licence.txt
 #
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -22,17 +21,23 @@ from exudyn.utilities import RevoluteJoint2D, GraphicsDataRectangle, SensorUserF
 from exudyn.utilities import MassPoint2D, VCable2D, GenerateStraightLineANCFCable2D, color4dodgerblue, SensorBody, RotationMatrixZ
 from exudyn.FEM import *
 
+import random
+from exudyn.robotics import Robot, RobotBase, RobotLink, RobotTool, StdDH2HT, VRobotBase, VRobotTool, VRobotLink
+from exudyn.robotics.motion import Trajectory, ProfileConstantAcceleration, ProfilePTP
+
 import sys
 import numpy as np
 from math import sin, cos, pi, tan, exp, sqrt, atan2
 
 from enum import Enum #for data types
+import time
 
 try: 
     import exudyn.graphics as graphics 
 except: 
-    print('warning: for latest ')
-
+    print('exudyn graphics could not be loaded. Make sure a version >= 1.8.52 is installed.' )
+    print('some simulation models may not work correctly. ')
+    
 try: 
     import ngsolve as ngs
     import netgen
@@ -688,10 +693,6 @@ class NonlinearOscillator(SimulationModel):
 
 
 
-#%% 
-class NonlinearDampedOscillator(NonlinearOscillator): 
-    def __init_(self, kwargs): 
-        pass
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1211,7 +1212,7 @@ class DoublePendulum(SimulationModel):
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #%%+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# this simulation model has equal inout and output step lengths
+# this simulation model does not have equal inout and output step lengths
 class NonlinearOscillatorContinuous(SimulationModel):
     #initialize class 
     def __init__(self, nStepsTotal=100,
@@ -1297,7 +1298,7 @@ class NonlinearOscillatorContinuous(SimulationModel):
         prevMarker = groundMarker
         
         self.mbs.variables['nonlinearityFactor'] = self.nonlinearityFactor
-
+            
         def UFspring(mbs, t, itemNumber, u, v, k, d, F0):
             off = GetInterpolatedSignalValue (t, mbs.variables['uVec'], mbs.variables['timeVecOut'],
                                            rangeWarning=False)
@@ -1332,7 +1333,7 @@ class NonlinearOscillatorContinuous(SimulationModel):
         
         self.uVec = None
  
-        self.mbs.variables['uVec'] = self.uVec
+        self.mbs.variables['uVec'] = np.zeros(self.mbs.variables['timeVecOut'].shape)
         
 
             
@@ -1710,9 +1711,10 @@ class SliderCrank(SimulationModel):
         self.mbs.variables['nRigid0'] = nRigid0
         self.mbs.variables['oRigid0'] = oRigid0
         if self.flagFlexible: 
-            # note: 
-            # with 16 elements it is pretty much converged; for faster calculation also less would be still possible. 
-            numElements = 20 #8 
+            # parameters of flexible crank
+            # note: performed convergence analysis; with 20 elements solution is converged; 
+            # for faster calculation also less would be possible. 
+            numElements = 20 # 
             E=2.07e8 * 5 #/ 10# * 0.4e-1             # Young's modulus of ANCF element in N/m^2           
             b=0.02                 # width of rectangular ANCF element in m
             h=0.02                  # height of rectangular ANCF element in m
@@ -1742,9 +1744,10 @@ class SliderCrank(SimulationModel):
             ancf = GenerateStraightLineANCFCable2D(self.mbs, p1_S, p1_E, numElements, cableTemplate)
             sensorANCFMiddle = self.mbs.AddSensor(SensorNode(nodeNumber=ancf[0][numElements//2], 
                                                              outputVariableType = exu.OutputVariableType.Position))
-            # sensorANCF
-            if np.linalg.norm(v1) > 1e-14: 
-                print('warning: velocity of ANCF element not initialized!')
+            
+            # if np.linalg.norm(v1) > 1e-14: 
+                # initialization of velocity for ANCF elements is not implemented as written in paper 
+                # print('warning: velocity of ANCF element not initialized!') 
         else: 
             nRigid1 = self.mbs.AddNode(Rigid2D(referenceCoordinates = p1, 
                                       initialVelocities    = v1));
@@ -1766,15 +1769,14 @@ class SliderCrank(SimulationModel):
         
             
         #++++++++++++++++++++++++++++++++
-        #markers for joints:
-        #support point # MUST be a rigidBodyMarker, because a torque is applied
+        # markers for joints:
+        # support point # MUST be a rigidBodyMarker, because a torque is applied
         mR0Left = self.mbs.AddMarker(MarkerBodyRigid(bodyNumber=oRigid0, localPosition=[-a0,0.,0.])) 
-        #end point; connection to connecting rod
+        # end point; connection to connecting rod
         mR0Right = self.mbs.AddMarker(MarkerBodyPosition(bodyNumber=oRigid0, localPosition=[ a0,0.,0.])) 
         
-        if self.flagFlexible: 
-
-            
+        # markers on first, last and center ANCF element
+        if self.flagFlexible:
             mR1LeftC = [0,0]
             mR1RightC = [0,0]
             mR0RightC = [0,0]
@@ -2380,11 +2382,7 @@ class Flex6RRobot(SimulationModel):
         
         sensorWriteToFile = False
         
-        
-
-
-        
-        #%%++++7+++++++++++++++++++++++++++++++++++++++++++++++++
+        #%%+++++++++++++++++++++++++++++++++++++++++++++++++++++
         gravity=[0,0,-9.81]
         #geometry 
         L = [0.075,0.4318,0.15005,0.4318]
@@ -2452,7 +2450,7 @@ class Flex6RRobot(SimulationModel):
                     GetCylinder([0,0,-Lbase+tBase], [0,0,1], Lbase-2*tBase-flangeBaseL, rBase-tBase) + 
                     GetCylinder([0,0,-flangeBaseL-tBase*0.5], fb[0]['axis1'], flangeBaseL+tBase*0.5, flangeBaseR))
         
-            print('start meshing')
+            print('start meshing flexible socket for 6R')
             mesh = ngs.Mesh( geo.GenerateMesh(maxh=meshSize))
             mesh.Curve(1)
             print('finished meshing')
@@ -3455,11 +3453,8 @@ if __name__ == '__main__': #include this to enable parallel processing
         model.mbs.PlotSensor(0, closeAll=False, newFigure=False)
 
     if False:
-        #model = NonlinearOscillator(nStepsTotal=100)
         model = DoublePendulum(nStepsTotal=500, endTime=5, nnType='FFN')
-        #model.CreateModel()
-        
-        # inputData = [1.6,1.6,0.000,0.300,1.010,2.130] #case1
+
         inputData = [1.6,2.2,0.030,0.330,1.500,2.41] #case2
         output = model.ComputeModel(inputData, 
                                     #hiddenData=[1.6,1.6,0,0],  #for qRNN

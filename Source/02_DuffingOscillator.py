@@ -1,15 +1,12 @@
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# This is an EXUDYN example
+#           02_DuffingOscillator
+# Details:  File for creating data and learning the Duffing Oscillators dynamic response
 #
-# Details:  Test model for linear n-mass oscillator
-#
-# Author:   Peter Manzl
-# Date:     2024-04-08
-#
-# Copyright:This file is part of Exudyn. Exudyn is free software. You can redistribute it and/or modify it under the terms of the Exudyn license. See 'LICENSE.txt' for more details.
+# Author:   Peter Manzl, Johannes Gerstmayr
+# Date:     2024-10-01
+# Copyright: See Licence.txt
 #
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 import exudyn as exu
 from exudyn.utilities import *
 from exudyn.processing import ParameterVariation
@@ -79,7 +76,8 @@ simModel = NonlinearOscillatorContinuous(nStepsTotal=nStepsTotal, useInitialValu
              useHarmonicExcitation=useHarmonicExcitation, useRandomExcitation = useRandomExcitation)
 
 simModel.CreateModel() # "assemble" model to be ready for simulation
-getDamping(simModel.mbs, 0.01)
+if __name__ == '__main__': 
+    getDamping(simModel.mbs, 0.01)
 
 # the following models are only placeholders / dummys: 
 nnModel = MyNeuralNetwork(inputOutputSize = simModel.GetInputOutputSizeNN(), # input and output size, 
@@ -218,7 +216,7 @@ if __name__ == '__main__': # needed to enable parallel processing of several tra
     
 
     #%%  
-    def testModelRecursively(nnModel, simModel, iPasses, nnModelEst = None): 
+    def testModelSLIDE(nnModel, simModel, iPasses, nnModelEst = None): 
         factorTest  = iPasses-1
         nTotal = simModel.nStepsTotal
         tEnd = simModel.endTime
@@ -303,10 +301,6 @@ if __name__ == '__main__': # needed to enable parallel processing of several tra
             plt.title(r'nonlinear: $\ddot{x} + d\dot{x} + kx + \alpha k x^3 = F$, $\alpha = ' + str(simModel.nonlinearityFactor) + '$')
         
     mapErrorInfo = functionData['mapErrorInfo']
-    testModelRecursively(nntc.nnModel, simModel, 5, nntc.nnModelEst)
+    testModelSLIDE(nntc.nnModel, simModel, 5, nntc.nnModelEst)
 
     
-    
-    
-
-#

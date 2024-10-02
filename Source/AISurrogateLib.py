@@ -1,16 +1,15 @@
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# This is an EXUDYN example
+#           AISurrogteLib
 #
-# Details:  library to support creation and testing of RNN networks
+# Details:  Library to support creation and testing of neural networks for multibody surrogate models
 #
-# Author:    Peter Manzl and Johannes Gerstmayr 
-# Date V1:   2023-06-23
-#      V2:   2024-05-06
-# current:   2024-09-28
-# Copyright: This file is part of Exudyn. Exudyn is free software. You can redistribute it and/or 
-# modify it under the terms of the Exudyn license. See 'LICENSE.txt' for more details.
+# Author:   Peter Manzl and Johannes Gerstmayr 
+# date:     2024-10-01
+# Copyright: See Licence.txt
 #
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 
 import exudyn as exu
 from exudyn.utilities import SmartRound2String
@@ -30,6 +29,8 @@ from matplotlib import colors as mColors
 
 from timeit import default_timer as timer
 from simModels import SimulationModel, NonlinearOscillator, SliderCrank
+from exudyn.robotics.motion import Trajectory, ProfileConstantAcceleration, ProfilePTP
+
 
 
 import torch
@@ -426,7 +427,7 @@ def ParameterFunctionTraining(parameterSet):
     P.learningRate= 0.001
     P.lossThreshold=1e-8
     P.batchSize=64
-    P.neuralNetworkType = 0 #[0=RNN, 1=FFN]
+    P.neuralNetworkType = 1 #[0=RNN, 1=FFN]; note that the RNN is currently not functioning
     P.hiddenLayerSize=128
     P.hiddenLayerStructureType=0 #'L'
     P.nTraining = 512
@@ -1182,7 +1183,7 @@ class NeuralNetworkTrainingCenter():
                     self.minLoss = self.validationResults[3][-1]
                     self.nnModelBest = copy.deepcopy(self.nnModel)
                     self.epochBestLoss = epoch
-                    print('new best minimal loss: {} at epoch {}'.format(roundSignificant(self.minLoss, 4), self.epochBestLoss))
+                    print('best minimal (validation) loss: {} at epoch {}'.format(roundSignificant(self.minLoss, 4), self.epochBestLoss))
                     
                 #switch back to training!
                 self.nnModel.train() # set network into training mode
@@ -1213,7 +1214,7 @@ class NeuralNetworkTrainingCenter():
             self.lossValErrEst = []
             outputScaling = torch.tensor(self.nnModelEst.outputScaling, dtype=self.floatType).to(self.computeDevice)
             # Convert your data to PyTorch tensors and create a DataLoader
-            if False: 
+            if False: # only use estimator data to train estimator
                 inputsEst = torch.tensor(self.inputsTrainingEst, dtype=self.floatType).to(self.computeDevice)#,non_blocking=True)
                 targetsEst = torch.tensor(self.targetsTrainingEst, dtype=self.floatType).to(self.computeDevice)#,non_blocking=True)
                 
@@ -1639,7 +1640,7 @@ class NeuralNetworkTrainingCenter():
                     if len(data) == 1: # quick and dirty fix for slidercrank: outputData has 1 dimension too much... 
                         data = data[0].T
                         dataRef = dataRef[0].T
-                    print('i: {} data shape: {}, dataRef shape: {}'.format(i, data.shape, dataRef.shape))
+                    # print('i: {} data shape: {}, dataRef shape: {}'.format(i, data.shape, dataRef.shape))
                     mbs.PlotSensor(data, components=comp, componentsX=compX, newFigure=newFigure,
                                     labels='NN train'+str(i) + labelErr, 
                                     xLabel = plotVars[0], yLabel=plotVars[1],
@@ -2233,9 +2234,3 @@ if __name__ == '__main__': #include this to enable parallel processing
     
     
     nntc.EvaluateModel(plotTests=[0,1,2,3,4], plotTrainings=[0,1,2,3,4], plotVars=['time','ODE2'])
-    # nntc.EvalulateErrorEstimator()
-    # valuesVerification = {'testMSE': [0.09912644326686859,     0.0051673720590770245,
-    #                                   0.05442434549331665,  0.10117586702108383,    0.012074938975274563,   0.01640535704791546,
-    #                                   0.06495358794927597,  0.007735507097095251,   0.02259751968085766,    0.11808185279369354],
-    #                       'maxTrainingMSE': 0.16640019416809082}
- 

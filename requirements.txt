@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+exudyn==1.8.52.dev1
+matplotlib==3.8.3
+torch==2.2.1+cu121
+torchaudio==2.2.1
+torchdiffeq==0.2.4
+torchinfo==1.8.0
+torchvision==0.17.1
+numpy==1.23.5
+ngsolve==6.2.2403

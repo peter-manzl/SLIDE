@@ -1,14 +1,13 @@
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# This is an EXUDYN example
+#           01_LinearOscillator
+# Details:  File for creating data and learning the linear Oscillators dynamic response
 #
-# Details:  Driver file for linear n-mass oscillator
-#
-# Author:   Peter Manzl
-# Date:     2024-04-08
-#
-# Copyright:This file is part of Exudyn. Exudyn is free software. You can redistribute it and/or modify it under the terms of the Exudyn license. See 'LICENSE.txt' for more details.
+# Author:   Peter Manzl, Johannes Gerstmayr
+# Date:     2024-10-01
+# Copyright: See Licence.txt
 #
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 import exudyn as exu
 from exudyn.utilities import *
@@ -154,7 +153,8 @@ simModel = NonlinearOscillator(nStepsTotal=nStepsTotal, variationMKD=variationMK
                          useVelocities=False, flagNoForce = False
                          )
 simModel.CreateModel()
-getDamping(simModel.mbs, 0.01)
+if __name__ == '__main__': 
+    getDamping(simModel.mbs, 0.01)
 
 nnModel = MyNeuralNetwork(inputOutputSize = simModel.GetInputOutputSizeNN(), # input and output size, 
                            neuralNetworkTypeName = 'FFN',
@@ -285,7 +285,7 @@ if __name__ == '__main__': #include this to enable parallel processing
 
     
 #%% 
-if True: 
+if  __name__ == '__main__' and True: 
     #%% visualization of matrices for linear layers
     netTest = valueList[0][1]
     w1, w2 = netTest.myNN[1].weight.detach().numpy(), netTest.myNN[2].weight.detach().numpy() # np.eye(64)# , netTest.myNN[2].weight.detach().numpy()
@@ -337,10 +337,4 @@ if True:
         plt.plot(A_total[:,25], label='column 25: force at j=23')
         plt.legend()
         plt.savefig('LinearSystem_c1.png')
-        
-    #%%
-    if 0: 
-        for i in range(10): 
-            plt.gcf().get_children()[-1].remove()
-        plt.legend(['1 hidden layer'] + ['__no__legend__']*4 + ['shallow network'])
         
